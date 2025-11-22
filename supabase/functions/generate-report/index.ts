@@ -11,33 +11,29 @@ interface GenerateRequest {
   reportType?: string;
 }
 
-// Basit analiz üretici (uygun şekilde geliştirilebilir)
 async function performSEOAnalysis(domain: string) {
   const baseScore = Math.floor(Math.random() * 30) + 60;
 
-  const analysis = {
+  return {
     domain,
-    seoScore: {
-      overall: baseScore,
-      technical: baseScore + Math.floor(Math.random() * 10) - 5,
-      content: baseScore + Math.floor(Math.random() * 10) - 5,
-      mobile: baseScore + Math.floor(Math.random() * 10) - 5,
-    },
-    pageSpeed: {
-      score: baseScore + Math.floor(Math.random() * 10),
-      loadTime: Math.random() * 3 + 1,
+    seo_score: baseScore,
+    page_speed: {
+      score: Math.min(100, baseScore + Math.floor(Math.random() * 10)),
+      load_time_s: Math.round((Math.random() * 3 + 1) * 100) / 100,
     },
     keywords: [
       { keyword: `${domain} hakkında`, position: Math.floor(Math.random() * 50) + 1 },
       { keyword: `${domain} nedir`, position: Math.floor(Math.random() * 50) + 1 },
     ],
-    sample: `Örnek içerik özeti için ${domain}`,
+    generated_at: new Date().toISOString(),
   };
-
-  return analysis;
 }
 
-Deno.serve(async (req: Request) => {
+addEventListener('fetch', (event: any) => {
+  event.respondWith(handleRequest(event.request));
+});
+
+async function handleRequest(req: Request) {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -45,22 +41,26 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const sb = createClient(supabaseUrl, supabaseKey);
 
-    const { data: body, error: parseError } = await req.json().then(d => ({ data: d, error: null }), e => ({ data: null, error: e }));
-    if (parseError || !body) {
-      return new Response(JSON.stringify({ success: false, error: 'Invalid JSON body' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ success: false, error: 'Authorization header required' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { projectId, reportType } = body as GenerateRequest;
-    if (!projectId) {
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+
+    const body = await req.json().catch(() => null);
+    if (!body || !body.projectId) {
       return new Response(JSON.stringify({ success: false, error: 'projectId is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Proje bilgisi al
-    const { data: project, error: projectError } = await supabase
+    const { projectId, reportType } = body as GenerateRequest;
+
+    // load project
+    const { data: project, error: projectError } = await sb
       .from('projects')
-      .select('*, users:user_id(id), domain')
+      .select('*')
       .eq('id', projectId)
       .maybeSingle();
 
@@ -68,30 +68,41 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ success: false, error: 'Project not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Rapor verisini oluştur (burada gerçek analiz çağrılabilir)
-    const analysis = await performSEOAnalysis(project.domain || project.domain);
+    // verify token belongs to project owner
+    const { data: userData, error: userErr } = await sb.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ success: false, error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
-    const reportPayload = {
+    const callerId = userData.user.id;
+    if (callerId !== project.user_id) {
+      return new Response(JSON.stringify({ success: false, error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // produce analysis (simple simulated)
+    const analysis = await performSEOAnalysis(project.domain);
+
+    const payload = {
       user_id: project.user_id,
       project_id: projectId,
       report_type: reportType || 'seo_overview',
       data: analysis,
     };
 
-    const { data: inserted, error: insertError } = await supabase
+    const { data: inserted, error: insertError } = await sb
       .from('reports')
-      .insert(reportPayload)
+      .insert(payload)
       .select()
       .single();
 
     if (insertError) {
-      console.error('Insert report error', insertError);
+      console.error('insert report error', insertError);
       return new Response(JSON.stringify({ success: false, error: 'Could not insert report' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify({ success: true, report: inserted }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
     console.error('generate-report error', err);
-    return new Response(JSON.stringify({ success: false, error: err?.message || String(err) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: false, error: String(err) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
-});
+}

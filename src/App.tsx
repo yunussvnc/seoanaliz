@@ -93,6 +93,37 @@ function App() {
     }
   };
 
+  const createReport = async (projectId: string) => {
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) {
+        alert('Lütfen önce giriş yapın');
+        return;
+      }
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ projectId, reportType: 'seo_overview' }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        alert(data?.error || 'Rapor oluşturulurken hata oluştu');
+        return;
+      }
+
+      alert('Rapor oluşturuldu');
+      setShowReportCenter(true);
+    } catch (err: any) {
+      alert(err.message || 'Bir hata oluştu');
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setAnalysis(null);
@@ -493,6 +524,20 @@ function App() {
                       }`}>
                         {project.status}
                       </span>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); createReport(project.id); }}
+                        className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition"
+                      >
+                        Rapor Oluştur
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDomain(project.domain); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition"
+                      >
+                        İncele
+                      </button>
                     </div>
                   </div>
                 ))}
