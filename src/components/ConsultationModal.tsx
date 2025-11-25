@@ -179,7 +179,7 @@ export default function ConsultationModal({ onClose }: ConsultationModalProps) {
                   className="mt-1 w-4 h-4 rounded border-blue-800/30 text-blue-600 focus:ring-blue-500"
                 />
                 <label htmlFor="terms" className="text-xs text-blue-200">
-                  Secesta Software Solutions 'nın{' '}
+                  Neokreatif Software Solutions 'nın{' '}
                   <a href="#" className="text-blue-400 hover:underline">Hizmet Şartları</a> ve{' '}
                   <a href="#" className="text-blue-400 hover:underline">Gizlilik Politikası</a>'nı okuduğumu ve kabul ettiğimi onaylıyorum
                 </label>

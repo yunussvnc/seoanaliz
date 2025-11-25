@@ -1,4 +1,4 @@
-# Secesta SEO Araçları - Full Stack SEO Analiz Platformu
+# Neokreatif SEO Araçları - Full Stack SEO Analiz Platformu
 
 Modern ve kapsamlı bir SEO analiz platformu. React, TypeScript, Tailwind CSS, Supabase ve Edge Functions ile geliştirilmiştir.
 

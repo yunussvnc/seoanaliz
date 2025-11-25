@@ -42,7 +42,7 @@ Deno.serve(async (req: Request) => {
           subject: `Yeni destek talebi: ${payload.name}`,
         },
       ],
-      from: { email: fromEmail, name: 'Secesta Support' },
+      from: { email: fromEmail, name: 'Neokreatif Support' },
       reply_to: { email: payload.email, name: payload.name },
       content: [
         {

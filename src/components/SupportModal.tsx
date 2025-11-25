@@ -83,16 +83,9 @@ export default function SupportModal({ onClose }: SupportModalProps) {
             </p>
 
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center mb-3">
-                <img
-                  src="https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150"
-                  alt="Emre SARIKAYNAK"
-                  className="w-16 h-16 rounded-lg mr-4 object-cover"
-                />
-                <div>
-                  <h3 className="font-semibold text-gray-900">Emre SARIKAYNAK</h3>
-                  <p className="text-sm text-gray-600">SEO Specialist</p>
-                </div>
+              <div className="mb-3">
+                <h3 className="font-semibold text-gray-900 text-lg">Ömer Öner</h3>
+                <p className="text-sm text-gray-600">SEO Specialist</p>
               </div>
 
               <div className="space-y-2 text-sm">

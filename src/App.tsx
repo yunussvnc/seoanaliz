@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Search, LogOut, User, FileText, Wrench, Menu, X as CloseIcon, Plus, MessageSquare } from 'lucide-react';
 import { supabase } from './lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { Database } from './lib/supabase';
+
+type Project = Database['public']['Tables']['projects']['Row'];
 import AnalysisResults from './components/AnalysisResults';
 import AuthModal from './components/AuthModal';
 import SEOTools, { CompetitorAnalysis, SitemapGenerator } from './components/SEOTools';
@@ -48,9 +52,9 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<SEOAnalysis | null>(null);
   const [error, setError] = useState('');
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [showCompetitors, setShowCompetitors] = useState(false);
   const [showSitemap, setShowSitemap] = useState(false);
   const [showUniqueness, setShowUniqueness] = useState(false);
@@ -119,8 +123,9 @@ function App() {
 
       alert('Rapor oluşturuldu');
       setShowReportCenter(true);
-    } catch (err: any) {
-      alert(err.message || 'Bir hata oluştu');
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Bir hata oluştu');
+      alert(error.message);
     }
   };
 
@@ -169,7 +174,10 @@ function App() {
       if (!domain && !analysis) {
         alert('Lütfen önce bir domain analiz edin');
       } else {
-        handleSubmit(new Event('submit') as any);
+        const syntheticEvent = {
+          preventDefault: () => { },
+        } as React.FormEvent;
+        handleSubmit(syntheticEvent);
       }
     } else {
       // Eğer uniqueness aracını seçtiyse özel modal aç
@@ -179,6 +187,23 @@ function App() {
         } else {
           setShowUniqueness(true);
         }
+        return;
+      }
+
+      // Rapor Merkezi
+      if (toolId === 'reports') {
+        if (!user) {
+          alert('Rapor merkezi için giriş yapmalısınız');
+          setShowAuthModal(true);
+        } else {
+          setShowReportCenter(true);
+        }
+        return;
+      }
+
+      // Araçlar
+      if (toolId === 'tools') {
+        setShowTools(true);
         return;
       }
 
@@ -246,8 +271,9 @@ function App() {
 
       const result = await response.json();
       setAnalysis(result.data);
-    } catch (err: any) {
-      setError(err.message || 'Bir hata oluştu');
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Bir hata oluştu');
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -258,9 +284,15 @@ function App() {
       <header className="border-b border-blue-800/30 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Search className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />
-              <span className="text-lg md:text-xl font-bold text-white">Secesta SEO Araçları</span>
+            <div className="flex items-center space-x-3">
+              <div className="bg-white p-2 rounded-lg flex items-center justify-center">
+                <img
+                  src="/neokreatif-logo.jpg"
+                  alt="NeoKreatif Logo"
+                  className="h-10 w-auto md:h-12"
+                />
+              </div>
+              <span className="text-lg md:text-xl font-bold text-white">Neokreatif SEO Araçları</span>
             </div>
 
             <button
@@ -517,11 +549,10 @@ function App() {
                       <span className="text-blue-300">
                         {new Date(project.created_at).toLocaleDateString('tr-TR')}
                       </span>
-                      <span className={`px-2 py-1 rounded transition-all duration-300 ${
-                        project.status === 'active'
-                          ? 'bg-green-500/20 text-green-300'
-                          : 'bg-gray-500/20 text-gray-300'
-                      }`}>
+                      <span className={`px-2 py-1 rounded transition-all duration-300 ${project.status === 'active'
+                        ? 'bg-green-500/20 text-green-300'
+                        : 'bg-gray-500/20 text-gray-300'
+                        }`}>
                         {project.status}
                       </span>
                     </div>
@@ -565,12 +596,14 @@ function App() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 mb-6 md:mb-8">
             <div>
               <h5 className="text-white font-semibold mb-2 md:mb-3 text-sm md:text-base">İletişim</h5>
-              <p className="text-blue-200 text-xs md:text-sm">Email: neokreatiff@gmail.com</p>
-              <p className="text-blue-200 text-xs md:text-sm">Tel: +90 544 190 44 47</p>
+              <p className="text-blue-200 text-xs md:text-sm">Email: neokreatif@gmail.com</p>
+              <p className="text-blue-200 text-xs md:text-sm">Tel: 0544 190 44 47</p>
             </div>
             <div>
               <h5 className="text-white font-semibold mb-2 md:mb-3 text-sm md:text-base">Adres</h5>
-              <p className="text-blue-200 text-xs md:text-sm">Yeniköy Mahallesi Nuripaşa Caddesi</p>
+              <p className="text-blue-200 text-xs md:text-sm">19 Mayıs Mah. 19 Mayıs Cad.</p>
+              <p className="text-blue-200 text-xs md:text-sm">Golden Plaza No:3 K:9</p>
+              <p className="text-blue-200 text-xs md:text-sm">34363, 34360 Şişli/İstanbul</p>
             </div>
             <div>
               <h5 className="text-white font-semibold mb-2 md:mb-3 text-sm md:text-base">Hizmetler</h5>
@@ -589,7 +622,7 @@ function App() {
             <a href="#" className="hover:text-white transition">Geri Ödeme Politikası</a>
           </div>
           <p className="text-center text-blue-300 text-xs md:text-sm mt-3 md:mt-4">
-            © 2024 Secesta Software Solutions. Tüm hakları saklıdır.
+            © 2024 Neokreatif Software Solutions. Tüm hakları saklıdır.
           </p>
         </div>
       </footer>
