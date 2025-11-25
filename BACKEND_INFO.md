@@ -25,27 +25,29 @@ Tüm tablolar başarıyla oluşturuldu ve RLS (Row Level Security) etkinleştiri
    - ✅ Politikalar: SELECT, INSERT, UPDATE
    - ✅ Foreign Key: project_id -> projects(id)
 
+### Yeni Admin CMS Tabloları
+Supabase üzerinde admin panel için gereken içerik şeması sıfırdan kuruldu:
+
+- **pages**: Statik sayfalar için slug, içerik JSONB, SEO meta alanları, `author_id` / `editor_id` referansları ve `published_at` zaman damgası içerir. Yayınlanan sayfalar herkese açık, diğer tüm işlemler yalnızca `admin` rolüyle yapılabilir.
+- **page_revisions**: Her sayfa güncellemesinin versiyon, başlık, özet ve içerik snapshotlarını saklar; rollback için kullanılır.
+- **posts**: Blog/haber içerikleri için statü (draft/review/published), tag dizisi, kapak görseli ve yayın tarihi alanlarına sahiptir.
+- **media_assets**: Supabase Storage’a yüklenen dosyaların bucket/path, MIME, dosya boyutu ve açıklama metadatasını tutar.
+- **site_settings**: `key/value` JSONB yapısıyla site durumunu (örn. bakım modu) yönetir; `is_public` flag’i sayesinde frontend yalnızca paylaşılabilir ayarları okuyabilir.
+- **admin_activity_logs**: Tüm CRUD aksiyonlarını `actor_id`, `action`, `entity_type`, `metadata` alanlarıyla kaydeder; sadece admin rolü okuyabilir/ekleyebilir.
+
+Her tabloda RLS zorunlu. Politikalar Supabase JWT içindeki `role = admin` claim’ini kontrol eder. Public-facing içerik (yayınlanmış `pages` ve `posts`) anonim kullanıcılar tarafından okunabilir, diğer tüm aksiyonlar admin rolüyle sınırlıdır. Ayrıca `update_updated_at_column()` trigger’ı sayfa/post/site_settings tablolarında otomatik timestamp güncellemesi yapar.
+
 ### Edge Functions
-2 adet Edge Function başarıyla deploy edildi:
+6 Edge Function Supabase projesi `cchgusotdmiabshxjjof` üzerine yeniden deploy edildi:
 
-1. **analyze-domain** (ACTIVE)
-   - Status: ACTIVE
-   - JWT Verification: Enabled
-   - Özellikler:
-     - Domain SEO analizi
-     - Sayfa hızı metrikleri
-     - SEO skorları (technical, content, mobile)
-     - Anahtar kelime pozisyon analizi
-     - Sorun tespiti ve öneriler
+1. **analyze-domain** – Domain SEO analizi, hız metrikleri, skorlar, sorun/öneri listesi
+2. **analyze-domain-real** – Gerçek PageSpeed verisiyle zenginleştirilmiş domain analizi
+3. **keyword-analysis** – Anahtar kelime sıralama ve metrik hesaplama
+4. **generate-report** – PDF/rapor çıktısı üretimi
+5. **send-support-email** – Destek talebi e-postalarını Supabase fonksiyonundan iletir
+6. **seo-report** – Kapsamlı teknik/content raporlarını toplu üretir
 
-2. **keyword-analysis** (ACTIVE)
-   - Status: ACTIVE
-   - JWT Verification: Enabled
-   - Özellikler:
-     - Anahtar kelime sıralama takibi
-     - Search volume hesaplama
-     - Difficulty scoring
-     - Otomatik keyword generation
+Tüm fonksiyonlarda JWT doğrulaması ve paylaşılan Supabase URL/env değişkenleri güncel durumda.
 
 ### Güvenlik Özellikleri
 
@@ -79,7 +81,7 @@ Performans için önemli indeksler oluşturuldu:
 
 ### 1. Domain Analizi
 ```bash
-POST https://lsabnchhehxkewjsqwtw.supabase.co/functions/v1/analyze-domain
+POST https://cchgusotdmiabshxjjof.supabase.co/functions/v1/analyze-domain
 Authorization: Bearer {jwt_token}
 Content-Type: application/json
 
@@ -120,7 +122,7 @@ Content-Type: application/json
 
 ### 2. Keyword Analizi
 ```bash
-POST https://lsabnchhehxkewjsqwtw.supabase.co/functions/v1/keyword-analysis
+POST https://cchgusotdmiabshxjjof.supabase.co/functions/v1/keyword-analysis
 Authorization: Bearer {jwt_token}
 Content-Type: application/json
 

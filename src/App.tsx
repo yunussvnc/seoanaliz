@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, LogOut, User, FileText, Wrench, Menu, X as CloseIcon, Plus, MessageSquare } from 'lucide-react';
+import { Search, LogOut, User, FileText, Wrench, Menu, X as CloseIcon, Plus, MessageSquare, Shield } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { Database } from './lib/supabase';
@@ -15,6 +15,7 @@ import ReportCenter from './components/ReportCenter';
 import ToolsSection from './components/ToolsSection';
 import AddProjectModal from './components/AddProjectModal';
 import ConsultationModal from './components/ConsultationModal';
+import AdminPanel from './components/admin/AdminPanel';
 
 interface SEOAnalysis {
   domain: string;
@@ -64,6 +65,7 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showAddProject, setShowAddProject] = useState(false);
   const [showConsultation, setShowConsultation] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -279,6 +281,9 @@ function App() {
     }
   };
 
+  const adminRole = (user?.app_metadata as { role?: string } | undefined)?.role;
+  const isAdmin = adminRole === 'admin';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       <header className="border-b border-blue-800/30 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-30">
@@ -329,6 +334,15 @@ function App() {
                     <User className="w-5 h-5" />
                     <span className="hidden lg:inline">{user.email}</span>
                   </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setShowAdminPanel(true)}
+                      className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-4 py-2 rounded-lg transition shadow-lg shadow-blue-900/40"
+                    >
+                      <Shield className="w-4 h-4" />
+                      <span>Admin Panel</span>
+                    </button>
+                  )}
                   <button
                     onClick={handleSignOut}
                     className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition"
@@ -361,6 +375,18 @@ function App() {
                   >
                     <Plus className="w-5 h-5" />
                     Web sitesi ekle
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      setShowAdminPanel(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 font-semibold transition shadow-lg shadow-blue-900/40"
+                  >
+                    <Shield className="w-5 h-5" />
+                    Admin Panel
                   </button>
                 )}
 
@@ -694,6 +720,7 @@ function App() {
       )}
 
       <FloatingSupportButton />
+      {isAdmin && <AdminPanel isOpen={showAdminPanel} onClose={() => setShowAdminPanel(false)} />}
     </div>
   );
 }
