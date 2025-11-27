@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import {
   ActivitySquare,
   FileText,
@@ -47,10 +48,10 @@ const RESOURCE_CONFIG: Record<
   {
     label: string;
     description: string;
-    icon: React.ComponentType<{ className?: string }>;
+    icon: ComponentType<{ className?: string }>;
     gradient: string;
     fields?: FormField[];
-    columns: Array<{ key: string; label: string; render?: (value: any, item: ResourceRecord) => string }>;
+    columns: Array<{ key: string; label: string; render?: (value: unknown, item: ResourceRecord) => ReactNode }>;
   }
 > = {
   pages: {
@@ -77,8 +78,16 @@ const RESOURCE_CONFIG: Record<
     columns: [
       { key: 'title', label: 'Başlık' },
       { key: 'slug', label: 'Slug' },
-      { key: 'status', label: 'Durum', render: value => value?.toUpperCase?.() ?? value },
-      { key: 'updated_at', label: 'Güncellendi', render: value => formatRelative(value) },
+      {
+        key: 'status',
+        label: 'Durum',
+        render: value => (typeof value === 'string' ? value.toUpperCase() : '-'),
+      },
+      {
+        key: 'updated_at',
+        label: 'Güncellendi',
+        render: value => formatRelative(typeof value === 'string' ? value : null),
+      },
     ],
   },
   posts: {
@@ -110,9 +119,21 @@ const RESOURCE_CONFIG: Record<
     ],
     columns: [
       { key: 'title', label: 'Başlık' },
-      { key: 'status', label: 'Durum', render: value => value?.toUpperCase?.() ?? value },
-      { key: 'tags', label: 'Etiketler', render: value => (Array.isArray(value) ? value.slice(0, 3).join(', ') : '-') },
-      { key: 'updated_at', label: 'Güncellendi', render: value => formatRelative(value) },
+      {
+        key: 'status',
+        label: 'Durum',
+        render: value => (typeof value === 'string' ? value.toUpperCase() : '-'),
+      },
+      {
+        key: 'tags',
+        label: 'Etiketler',
+        render: value => (Array.isArray(value) ? value.slice(0, 3).join(', ') || '-' : '-'),
+      },
+      {
+        key: 'updated_at',
+        label: 'Güncellendi',
+        render: value => formatRelative(typeof value === 'string' ? value : null),
+      },
     ],
   },
   media: {
@@ -141,9 +162,20 @@ const RESOURCE_CONFIG: Record<
       {
         key: 'size_bytes',
         label: 'Boyut',
-        render: value => (value ? formatBytes(Number(value)) : '-'),
+        render: value => {
+          if (typeof value === 'number') return formatBytes(value);
+          if (typeof value === 'string') {
+            const parsed = Number(value);
+            return Number.isNaN(parsed) ? '-' : formatBytes(parsed);
+          }
+          return '-';
+        },
       },
-      { key: 'created_at', label: 'Yüklendi', render: value => formatRelative(value) },
+      {
+        key: 'created_at',
+        label: 'Yüklendi',
+        render: value => formatRelative(typeof value === 'string' ? value : null),
+      },
     ],
   },
   settings: {
@@ -175,9 +207,13 @@ const RESOURCE_CONFIG: Record<
       {
         key: 'is_public',
         label: 'Durum',
-        render: value => (value ? 'Public' : 'Private'),
+        render: value => (typeof value === 'boolean' ? (value ? 'Public' : 'Private') : 'Private'),
       },
-      { key: 'updated_at', label: 'Güncellendi', render: value => formatRelative(value) },
+      {
+        key: 'updated_at',
+        label: 'Güncellendi',
+        render: value => formatRelative(typeof value === 'string' ? value : null),
+      },
     ],
   },
   logs: {
@@ -189,7 +225,11 @@ const RESOURCE_CONFIG: Record<
       { key: 'action', label: 'Aksiyon' },
       { key: 'entity_type', label: 'Varlık' },
       { key: 'actor_id', label: 'Admin' },
-      { key: 'created_at', label: 'Tarih', render: value => formatRelative(value) },
+      {
+        key: 'created_at',
+        label: 'Tarih',
+        render: value => formatRelative(typeof value === 'string' ? value : null),
+      },
     ],
   },
 };
@@ -258,12 +298,12 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
     const initialValues: Record<string, string> = {};
 
     fields.forEach(field => {
-      const rawValue = (item as Record<string, any> | undefined)?.[field.key];
+      const rawValue = (item as Record<string, unknown> | undefined)?.[field.key];
       if (JSON_FIELDS[activeResource].includes(field.key)) {
         initialValues[field.key] = JSON.stringify(rawValue ?? {}, null, 2);
       } else if (ARRAY_FIELDS[activeResource].includes(field.key) && Array.isArray(rawValue)) {
         initialValues[field.key] = rawValue.join(', ');
-      } else if (field.type === 'datetime' && rawValue) {
+      } else if (field.type === 'datetime' && typeof rawValue === 'string') {
         initialValues[field.key] = rawValue.slice(0, 16);
       } else if (typeof rawValue === 'boolean') {
         initialValues[field.key] = rawValue ? 'true' : 'false';
@@ -338,11 +378,10 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
               <button
                 key={key}
                 onClick={() => setActiveResource(key as Resource)}
-                className={`group flex w-full items-center gap-3 px-6 py-3 text-left text-sm font-medium transition ${
-                  activeResource === key
-                    ? 'text-white bg-white/10 shadow-lg shadow-blue-900/30'
-                    : 'text-blue-100/70 hover:text-white hover:bg-white/5'
-                }`}
+                className={`group flex w-full items-center gap-3 px-6 py-3 text-left text-sm font-medium transition ${activeResource === key
+                  ? 'text-white bg-white/10 shadow-lg shadow-blue-900/30'
+                  : 'text-blue-100/70 hover:text-white hover:bg-white/5'
+                  }`}
               >
                 <config.icon className="w-4 h-4" />
                 <span>{config.label}</span>
@@ -460,11 +499,14 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                     <tbody>
                       {filteredItems.map(item => (
                         <tr key={getPrimaryId(item)} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition">
-                          {columns.map(column => (
-                            <td key={column.key} className="px-6 py-4">
-                              {column.render ? column.render((item as Record<string, any>)[column.key], item) : (item as Record<string, any>)[column.key] ?? '-'}
-                            </td>
-                          ))}
+                          {columns.map(column => {
+                            const cellValue = (item as Record<string, unknown>)[column.key];
+                            return (
+                              <td key={column.key} className="px-6 py-4">
+                                {column.render ? column.render(cellValue, item) : formatCellValue(cellValue)}
+                              </td>
+                            );
+                          })}
                           {activeResource !== 'logs' && (
                             <td className="px-6 py-4 text-right">
                               <div className="inline-flex items-center gap-2">
@@ -563,7 +605,7 @@ async function callAdminApi<T>({
   resource: Resource;
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   id?: string | null;
-  body?: Record<string, any>;
+  body?: Record<string, unknown>;
 }): Promise<T> {
   const {
     data: { session },
@@ -607,20 +649,20 @@ function getPrimaryId(item: ResourceRecord | null | undefined) {
 }
 
 function preparePayload(resource: Resource, values: Record<string, string>) {
-  const payload: Record<string, any> = {};
+  const payload: Record<string, unknown> = {};
 
   const fields = RESOURCE_CONFIG[resource].fields ?? [];
   fields.forEach(field => {
-    let value = values[field.key];
+    const fieldValue = values[field.key];
 
-    if (value === undefined || value === '') {
+    if (fieldValue === undefined || fieldValue === '') {
       payload[field.key] = JSON_FIELDS[resource].includes(field.key) ? {} : undefined;
       return;
     }
 
     if (JSON_FIELDS[resource].includes(field.key)) {
       try {
-        payload[field.key] = JSON.parse(value);
+        payload[field.key] = JSON.parse(fieldValue);
       } catch {
         throw new Error(`${field.label} alanı geçerli bir JSON değil`);
       }
@@ -628,7 +670,7 @@ function preparePayload(resource: Resource, values: Record<string, string>) {
     }
 
     if (ARRAY_FIELDS[resource].includes(field.key)) {
-      payload[field.key] = value
+      payload[field.key] = fieldValue
         .split(',')
         .map(part => part.trim())
         .filter(Boolean);
@@ -636,21 +678,21 @@ function preparePayload(resource: Resource, values: Record<string, string>) {
     }
 
     if (field.type === 'datetime') {
-      payload[field.key] = new Date(value).toISOString();
+      payload[field.key] = new Date(fieldValue).toISOString();
       return;
     }
 
     if (field.key === 'size_bytes') {
-      payload[field.key] = Number(value) || null;
+      payload[field.key] = Number(fieldValue) || null;
       return;
     }
 
     if (field.key === 'is_public') {
-      payload[field.key] = value === 'true';
+      payload[field.key] = fieldValue === 'true';
       return;
     }
 
-    payload[field.key] = value;
+    payload[field.key] = fieldValue;
   });
 
   return payload;
@@ -801,4 +843,19 @@ function selectOptions(options: string[]) {
     label: option.charAt(0).toUpperCase() + option.slice(1),
     value: option,
   }));
+
+}
+
+function formatCellValue(value: unknown): ReactNode {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return '-';
+    }
+  }
+  const stringValue = String(value);
+  return stringValue.length > 0 ? stringValue : '-';
+}
 
